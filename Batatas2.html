@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Análise de Produção /Vendas de Toneladas de Batatas em 2024</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+  
+<style>
+  body {
+    font-family: Arial;
+    padding: 20px;
+  }
+  select, button {
+    margin: 10px;
+    padding: 5px 10px;
+  }
+  .zoom-controls {
+    margin-top: 5px;
+    margin-bottom: 5px;
+  }
+  #grafico {
+    display: block;
+    margin: 0 auto;
+    transition: transform 0.2s ease;
+  }
+</style>
+  
+</head>
+<body>
+  <h2>Análise de Produção /Vendas de Toneladas de Batatas em 2024</h2>
+
+  <label for="tipo">Tipo:</label>
+  <select id="tipo">
+    <option value="">Selecione</option>
+    <option value="Produção">Produção</option>
+    <option value="Vendas">Vendas</option>
+  </select>
+
+  <label for="dataInicial">Data Inicial:</label>
+  <select id="dataInicial">
+    <option value="">Selecione</option>
+  </select>
+
+  <label for="dataFinal">Data Final:</label>
+  <select id="dataFinal">
+    <option value="">Selecione</option>
+  </select>
+
+  <div class="zoom-controls">
+    <button id="zoomIn">+</button>
+    <button id="zoomOut">−</button>
+  </div>
+
+  <canvas id="grafico"></canvas>
+
+  <script>
+    const dadosProducao = [
+      { AnoMes: '202501', Qtd: 90 }, { AnoMes: '202502', Qtd: 80 },
+      { AnoMes: '202503', Qtd: 120 }, { AnoMes: '202504', Qtd: 90 },
+      { AnoMes: '202505', Qtd: 80 }, { AnoMes: '202506', Qtd: 120 },
+      { AnoMes: '202507', Qtd: 60 }, { AnoMes: '202508', Qtd: 60 },
+      { AnoMes: '202509', Qtd: 80 }, { AnoMes: '202510', Qtd: 100 },
+      { AnoMes: '202511', Qtd: 150 }, { AnoMes: '202512', Qtd: 140 }
+    ];
+
+    const dadosVendas = [
+      { AnoMes: '202501', Qtd: 100 }, { AnoMes: '202502', Qtd: 110 },
+      { AnoMes: '202503', Qtd: 140 }, { AnoMes: '202504', Qtd: 90 },
+      { AnoMes: '202505', Qtd: 80 }, { AnoMes: '202506', Qtd: 124 },
+      { AnoMes: '202507', Qtd: 70 }, { AnoMes: '202508', Qtd: 80 },
+      { AnoMes: '202509', Qtd: 90 }, { AnoMes: '202510', Qtd: 110 },
+      { AnoMes: '202511', Qtd: 160 }, { AnoMes: '202512', Qtd: 150 }
+    ];
+
+    const tipoSelect = document.getElementById('tipo');
+    const dataInicial = document.getElementById('dataInicial');
+    const dataFinal = document.getElementById('dataFinal');
+    const ctx = document.getElementById('grafico').getContext('2d');
+    const canvas = document.getElementById('grafico');
+    const zoomInBtn = document.getElementById('zoomIn');
+    const zoomOutBtn = document.getElementById('zoomOut');
+    let grafico;
+    let zoomLevel = 1;
+
+    tipoSelect.addEventListener('change', () => {
+      limparCombo(dataInicial);
+      limparCombo(dataFinal);
+      const dados = obterDadosSelecionados();
+      preencherCombo(dataInicial, dados.map(d => d.AnoMes));
+    });
+
+    dataInicial.addEventListener('change', () => {
+      limparCombo(dataFinal);
+      const dados = obterDadosSelecionados();
+      const inicio = dataInicial.value;
+      const datas = dados.map(d => d.AnoMes).filter(mes => mes >= inicio);
+      preencherCombo(dataFinal, datas);
+    });
+
+    dataFinal.addEventListener('change', desenharGrafico);
+
+    zoomInBtn.addEventListener('click', () => {
+      zoomLevel += 0.1;
+      canvas.style.transform = `scale(${zoomLevel})`;
+    });
+
+    zoomOutBtn.addEventListener('click', () => {
+      if (zoomLevel > 0.2) {
+        zoomLevel -= 0.1;
+        canvas.style.transform = `scale(${zoomLevel})`;
+      }
+    });
+
+    function obterDadosSelecionados() {
+      const tipo = tipoSelect.value;
+      return tipo === 'Vendas' ? dadosVendas : dadosProducao;
+    }
+
+    function limparCombo(combo) {
+      combo.innerHTML = '<option value="">Selecione</option>';
+    }
+
+    function preencherCombo(combo, valores) {
+      const unicos = [...new Set(valores)];
+      unicos.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = v;
+        combo.appendChild(opt);
+      });
+    }
+
+    function desenharGrafico() {
+      const tipo = tipoSelect.value;
+      const inicio = dataInicial.value;
+      const fim = dataFinal.value;
+
+      if (!tipo || !inicio || !fim) return;
+
+      const dados = obterDadosSelecionados().filter(d => d.AnoMes >= inicio && d.AnoMes <= fim);
+      const labels = dados.map(d => d.AnoMes);
+      const valores = dados.map(d => d.Qtd);
+      const cor = tipo === 'Vendas' ? 'darkgreen' : 'darkblue';
+
+      if (grafico) grafico.destroy();
+
+      grafico = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: tipo,
+            data: valores,
+            backgroundColor: cor
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: true },
+            datalabels: {
+              anchor: 'end',
+              align: 'end',
+              color: '#000',
+              font: { weight: 'bold' }
+            }
+          },
+          scales: {
+            y: { beginAtZero: true }
+          }
+        },
+        plugins: [ChartDataLabels]
+      });
+    }
+  </script>
+</body>
+</html>
